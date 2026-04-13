@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Account Monitor — Payer</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --s1: #ffffff;
+    --s2: #eeecea;
+    --s3: #e4e2de;
+    --border: rgba(0,0,0,0.08);
+    --border2: rgba(0,0,0,0.14);
+    --green: #00a35c;
+    --green-bg: #e6f7ef;
+    --red: #d93025;
+    --red-bg: #fdecea;
+    --amber: #b06000;
+    --amber-bg: #fff4e0;
+    --ink: #1a1a1a;
+    --muted: rgba(26,26,26,0.5);
+    --dim: rgba(26,26,26,0.3);
+    --accent: #1a1a1a;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); min-height: 100vh; }
+
+  header {
+    background: var(--s1); border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo { font-family: var(--mono); font-size: 13px; letter-spacing: 0.12em; color: var(--ink); }
+  .role-badge {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+    padding: 4px 10px; border-radius: 4px;
+    background: var(--s2); color: var(--muted); border: 1px solid var(--border2);
+  }
+
+  .layout { max-width: 900px; margin: 0 auto; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
+
+  /* HERO STATUS */
+  .hero {
+    background: var(--s1); border-radius: 16px; border: 1px solid var(--border);
+    padding: 2rem 2.5rem;
+    display: flex; align-items: center; gap: 2rem;
+    transition: border-color 0.3s;
+    position: relative; overflow: hidden;
+  }
+  .hero.active { border-color: rgba(0,163,92,0.4); }
+  .hero.offline { border-color: rgba(217,48,37,0.3); }
+  .hero.active::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--green);
+  }
+
+  .hero-orb {
+    width: 72px; height: 72px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    transition: all 0.4s;
+  }
+  .hero-orb.active { background: var(--green-bg); }
+  .hero-orb.offline { background: var(--red-bg); }
+  .hero-orb.loading { background: var(--s2); }
+
+  .orb-core { width: 28px; height: 28px; border-radius: 50%; transition: all 0.4s; }
+  .active .orb-core { background: var(--green); animation: breathe 2.5s ease-in-out infinite; }
+  .offline .orb-core { background: var(--red); }
+  .loading .orb-core { background: transparent; border: 2px solid var(--border2); border-top-color: var(--ink); animation: spin 0.8s linear infinite; }
+  @keyframes breathe { 0%,100%{transform:scale(1)} 50%{transform:scale(1.12)} }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .hero-info { flex: 1; }
+  .hero-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; color: var(--dim); text-transform: uppercase; margin-bottom: 6px; }
+  .hero-status { font-size: 30px; font-weight: 700; letter-spacing: -0.03em; transition: color 0.3s; }
+  .hero-status.active { color: var(--green); }
+  .hero-status.offline { color: var(--red); }
+  .hero-status.loading { color: var(--muted); font-size: 22px; font-weight: 400; }
+  .hero-sub { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+  .hero-right { text-align: right; flex-shrink: 0; }
+  .hero-right-label { font-family: var(--mono); font-size: 9px; color: var(--dim); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 4px; }
+  .hero-right-val { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+
+  /* METRICS */
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+  .metric { background: var(--s1); padding: 1.25rem 1.5rem; }
+  .metric-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; color: var(--dim); text-transform: uppercase; margin-bottom: 8px; }
+  .metric-value { font-family: var(--mono); font-size: 20px; font-weight: 500; color: var(--ink); }
+  .metric-value.green { color: var(--green); }
+  .metric-value.red { color: var(--red); }
+  .metric-value.amber { color: var(--amber); }
+
+  /* JOB PANEL */
+  .panel { background: var(--s1); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .panel-head { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  .panel-title { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; color: var(--muted); text-transform: uppercase; }
+
+  /* FILTER TABS */
+  .filter-tabs { display: flex; gap: 6px; }
+  .filter-tab {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+    padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border2);
+    background: transparent; color: var(--muted); cursor: pointer; transition: all 0.15s;
+  }
+  .filter-tab:hover { background: var(--s2); color: var(--ink); }
+  .filter-tab.active-tab { background: var(--ink); color: white; border-color: var(--ink); }
+
+  /* JOB CARD (payer list) */
+  .job-card-payer {
+    padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+    animation: slide 0.2s ease-out;
+  }
+  .job-card-payer:last-child { border-bottom: none; }
+  .job-card-left { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+  .job-card-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .job-id { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+  .job-game-tag {
+    font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 4px;
+    background: var(--s2); color: var(--muted); border: 1px solid var(--border2);
+  }
+  .job-note-text { font-size: 13px; color: var(--ink); }
+  .job-meta-text { font-family: var(--mono); font-size: 10px; color: var(--dim); }
+  .job-card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+
+  .job-info { padding: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
+  .job-row { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
+  .job-row:last-child { border-bottom: none; }
+  .job-row-label { font-size: 13px; color: var(--muted); }
+  .job-row-val { font-family: var(--mono); font-size: 13px; color: var(--ink); }
+
+  .status-chip {
+    font-family: var(--mono); font-size: 11px; padding: 3px 10px;
+    border-radius: 20px; letter-spacing: 0.05em;
+  }
+  .chip-open { background: var(--amber-bg); color: var(--amber); }
+  .chip-active { background: var(--green-bg); color: var(--green); }
+  .chip-completed { background: var(--s2); color: var(--muted); }
+  .chip-none { background: var(--s2); color: var(--dim); }
+
+  /* POST JOB */
+  .post-job { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+  .field-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: var(--dim); text-transform: uppercase; margin-bottom: 6px; }
+  .field-input {
+    width: 100%; background: var(--s2); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 10px 14px; color: var(--ink);
+    font-family: var(--sans); font-size: 14px; outline: none; transition: border-color 0.15s;
+  }
+  .field-input:focus { border-color: var(--ink); }
+  .btn-post {
+    padding: 12px 24px; border-radius: 10px; border: none;
+    background: var(--ink); color: white;
+    font-family: var(--sans); font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: opacity 0.15s;
+    align-self: flex-start;
+  }
+  .btn-post:hover { opacity: 0.8; }
+  .btn-post:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-delete {
+    padding: 7px 16px; border-radius: 8px;
+    border: 1px solid rgba(217,48,37,0.35);
+    background: var(--red-bg); color: var(--red);
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: opacity 0.15s;
+  }
+  .btn-delete:hover { opacity: 0.75; }
+  .btn-delete:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* HISTORY */
+  .history-item {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 0.85rem 1.5rem; border-bottom: 1px solid var(--border);
+    animation: slide 0.2s ease-out;
+  }
+  .history-item:last-child { border-bottom: none; }
+  @keyframes slide { from { opacity:0; transform: translateX(-6px); } to { opacity:1; transform:translateX(0); } }
+  .h-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .h-dot.active { background: var(--green); }
+  .h-dot.offline { background: var(--red); }
+  .h-status { font-size: 13px; color: var(--ink); flex: 1; text-transform: capitalize; }
+  .h-time { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+
+  /* POLL */
+  .poll-row { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.5rem; }
+  .poll-label { font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: 0.1em; flex: 1; }
+  .poll-btn {
+    padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border2);
+    background: transparent; color: var(--muted); font-family: var(--mono);
+    font-size: 11px; cursor: pointer; transition: all 0.15s;
+  }
+  .poll-btn:hover { background: var(--s2); color: var(--ink); }
+
+  .empty { text-align: center; padding: 3rem; font-family: var(--mono); font-size: 11px; color: var(--dim); letter-spacing: 0.1em; }
+
+  .game-select {
+    width: 100%; background: var(--s2); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 9px 14px; color: var(--ink);
+    font-family: var(--sans); font-size: 14px; outline: none;
+    transition: border-color 0.15s; cursor: pointer; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%231a1a1a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center;
+    padding-right: 36px;
+  }
+  .game-select:focus { border-color: var(--ink); }
+
+  .toast {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(16px);
+    background: var(--ink); border-radius: 8px; padding: 10px 20px;
+    font-family: var(--mono); font-size: 12px; color: white;
+    opacity: 0; transition: all 0.3s; z-index: 999; white-space: nowrap; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .spinner-sm { width: 14px; height: 14px; border: 2px solid var(--border2); border-top-color: var(--ink); border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
+
+  @media (max-width: 600px) {
+    .layout { padding: 1rem; }
+    .hero { flex-wrap: wrap; }
+    .hero-right { display: none; }
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
+
+// ─── Config ───────────────────────────────────────────────────────────────────
+const API_BASE   = ""; // change to Cloud Run URL
+const PAYER_KEY  = "payer-key-1";           // change to real key
+const ACCOUNT_ID = "player_a";              // change per payer
+
+const api = (path, opts = {}) =>
+  fetch(`${API_BASE}${path}`, {
+    ...opts,
+    headers: { "x-api-key": PAYER_KEY, "Content-Type": "application/json", ...opts.headers },
+  }).then(r => r.json());
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function timeAgo(ts) {
+  if (!ts) return "—";
+  const s = Math.floor((Date.now() - new Date(ts)) / 1000);
+  if (s < 10) return "just now";
+  if (s < 60) return s + "s ago";
+  if (s < 3600) return Math.floor(s / 60) + "m ago";
+  return Math.floor(s / 3600) + "h ago";
+}
+
+function fmtTime(ts) {
+  if (!ts) return "—";
+  return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function useToast() {
+  const [msg, setMsg] = useState("");
+  const [show, setShow] = useState(false);
+  const t = useRef();
+  const toast = (m) => {
+    setMsg(m); setShow(true);
+    clearTimeout(t.current);
+    t.current = setTimeout(() => setShow(false), 2500);
+  };
+  return { msg, show, toast };
+}
+
+// ─── App ──────────────────────────────────────────────────────────────────────
+function App() {
+  const [statusData, setStatusData] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [jobs, setJobs] = useState([]);
+  const [jobFilter, setJobFilter] = useState("all");
+  const [jobNote, setJobNote] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [deleting, setDeleting] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState(null);
+  const [games, setGames] = useState([]);
+  const [selectedGame, setSelectedGame] = useState("");
+  const { msg, show, toast } = useToast();
+  const pollRef = useRef();
+
+  const loadGames = useCallback(async () => {
+    try {
+      const data = await api("/payer/games");
+      const list = data.games || [];
+      setGames(list);
+      if (list.length > 0) setSelectedGame(list[0]);
+    } catch {}
+  }, []);
+
+  const loadStatus = useCallback(async () => {
+    try {
+      const data = await api(`/payer/status/${ACCOUNT_ID}`);
+      setStatusData(data);
+      setLastRefresh(new Date());
+    } catch { toast("Connection error"); }
+    setLoading(false);
+  }, []);
+
+  const loadHistory = useCallback(async () => {
+    try {
+      const data = await api(`/payer/history/${ACCOUNT_ID}`);
+      setHistory(data.history || []);
+    } catch {}
+  }, []);
+
+  const loadJobs = useCallback(async () => {
+    try {
+      const data = await api(`/payer/jobs/${ACCOUNT_ID}`);
+      setJobs(data.jobs || []);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    loadGames();
+    loadStatus(); loadHistory(); loadJobs();
+    pollRef.current = setInterval(() => { loadStatus(); loadHistory(); loadJobs(); }, 30000);
+    return () => clearInterval(pollRef.current);
+  }, []);
+
+  const deleteJob = async (jobId) => {
+    if (!confirm("Delete this job post?")) return;
+    setDeleting(jobId);
+    try {
+      await api(`/payer/jobs/${jobId}`, { method: "DELETE" });
+      toast("Job deleted.");
+      loadJobs();
+    } catch { toast("Failed to delete job"); }
+    setDeleting(null);
+  };
+
+  const postJob = async () => {
+    setPosting(true);
+    try {
+      await api("/payer/jobs", {
+        method: "POST",
+        body: JSON.stringify({ account_id: ACCOUNT_ID, game: selectedGame, note: jobNote }),
+      });
+      toast("Job posted! Hunters can now see it.");
+      setJobNote("");
+      loadJobs();
+    } catch { toast("Failed to post job"); }
+    setPosting(false);
+  };
+
+  const s = statusData?.online_status || "loading";
+
+  const activeCount = history.filter(h => h.status === "active").length;
+  const uptimePct = history.length ? Math.round((activeCount / history.length) * 100) : 0;
+
+  return (
+    <>
+      <header>
+        <div className="logo">GAME·MONITOR</div>
+        <div className="role-badge">PAYER</div>
+      </header>
+
+      <div className="layout">
+        {/* HERO */}
+        <div className={`hero ${loading ? "loading" : s}`}>
+          <div className={`hero-orb ${loading ? "loading" : s}`}>
+            <div className="orb-core" />
+          </div>
+          <div className="hero-info">
+            <div className="hero-label">{ACCOUNT_ID}</div>
+            {loading
+              ? <div className="hero-status loading">Connecting...</div>
+              : <div className={`hero-status ${s}`}>{s === "active" ? "Player Online" : s === "offline" ? "Offline" : "Unknown"}</div>
+            }
+            <div className="hero-sub">
+              Last seen: {timeAgo(statusData?.last_seen)} · Auto-refresh 30s
+            </div>
+          </div>
+          <div className="hero-right">
+            <div className="hero-right-label">Refreshed</div>
+            <div className="hero-right-val">{lastRefresh ? fmtTime(lastRefresh) : "—"}</div>
+          </div>
+        </div>
+
+        {/* METRICS */}
+        <div className="metrics">
+          <div className="metric">
+            <div className="metric-label">Status</div>
+            <div className={`metric-value ${s === "active" ? "green" : s === "offline" ? "red" : ""}`}>
+              {loading ? "—" : s}
+            </div>
+          </div>
+          <div className="metric">
+            <div className="metric-label">Uptime (last 50)</div>
+            <div className={`metric-value ${uptimePct > 70 ? "green" : "amber"}`}>{uptimePct}%</div>
+          </div>
+          <div className="metric">
+            <div className="metric-label">Events logged</div>
+            <div className="metric-value">{history.length}</div>
+          </div>
+        </div>
+
+        {/* JOBS LIST */}
+        {(() => {
+          const FILTERS = ["all", "open", "active", "completed"];
+          const filtered = jobFilter === "all" ? jobs : jobs.filter(j => j.status === jobFilter);
+          return (
+            <div className="panel">
+              <div className="panel-head">
+                <span className="panel-title">My jobs ({jobs.length})</span>
+                <div className="filter-tabs">
+                  {FILTERS.map(f => (
+                    <button key={f} className={`filter-tab ${jobFilter === f ? "active-tab" : ""}`} onClick={() => setJobFilter(f)}>
+                      {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+                      {f !== "all" && ` (${jobs.filter(j => j.status === f).length})`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {filtered.length === 0
+                ? <div className="empty">NO JOBS{jobFilter !== "all" ? ` WITH STATUS "${jobFilter.toUpperCase()}"` : ""}</div>
+                : filtered.map(job => (
+                    <div key={job.id} className="job-card-payer">
+                      <div className="job-card-left">
+                        <div className="job-card-top">
+                          <span className="job-id">#{job.id}</span>
+                          {job.game && <span className="job-game-tag">{job.game}</span>}
+                          <span className={`status-chip ${job.status === "active" ? "chip-active" : job.status === "open" ? "chip-open" : "chip-completed"}`}>
+                            {job.status}
+                          </span>
+                          {job.progress && job.status !== "completed" && (
+                            <span className={`status-chip ${job.progress === "in_progress" ? "chip-active" : "chip-none"}`}>
+                              {job.progress === "in_progress" ? "● In Progress" : "◌ In Queue"}
+                            </span>
+                          )}
+                        </div>
+                        {job.note && <div className="job-note-text">{job.note}</div>}
+                        <div className="job-meta-text">
+                          {job.hunter_id ? `Hunter: ${job.hunter_id}` : "Awaiting hunter"}
+                          {job.accepted_at && ` · Accepted ${timeAgo(job.accepted_at)}`}
+                          {job.completed_at && ` · Completed ${timeAgo(job.completed_at)}`}
+                          {` · Posted ${timeAgo(job.created_at)}`}
+                        </div>
+                      </div>
+                      <div className="job-card-right">
+                        {job.status === "open" && (
+                          <button className="btn-delete" onClick={() => deleteJob(job.id)} disabled={deleting === job.id}>
+                            {deleting === job.id ? "..." : "Delete"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+              }
+            </div>
+          );
+        })()}
+
+        {/* POST NEW JOB */}
+        <div className="panel">
+          <div className="panel-head">
+            <span className="panel-title">Post a new job</span>
+          </div>
+          <div className="post-job">
+            <div>
+              <div className="field-label">Game <span style={{color:"var(--red)"}}>*</span></div>
+              <select
+                className="game-select"
+                value={selectedGame}
+                onChange={e => setSelectedGame(e.target.value)}
+                disabled={games.length === 0}
+              >
+                {games.length === 0
+                  ? <option>Loading...</option>
+                  : games.map(g => <option key={g} value={g}>{g}</option>)
+                }
+              </select>
+            </div>
+            <div>
+              <div className="field-label">Note for hunter <span style={{color:"var(--red)"}}>*</span></div>
+              <input
+                className="field-input"
+                value={jobNote}
+                onChange={e => setJobNote(e.target.value)}
+                placeholder="e.g. Please grind Ash Forest, need 100 AP gear..."
+              />
+              {jobNote.trim() === "" && <div style={{fontFamily:"var(--mono)",fontSize:"11px",color:"var(--red)",marginTop:"6px"}}>Required</div>}
+            </div>
+            <button className="btn-post" onClick={postJob} disabled={posting || !jobNote.trim()}>
+              {posting ? "Posting..." : "Post Job"}
+            </button>
+          </div>
+        </div>
+
+        {/* HISTORY */}
+        <div className="panel">
+          <div className="panel-head">
+            <span className="panel-title">Session history</span>
+          </div>
+          <div className="poll-row">
+            <span className="poll-label">LAST {history.length} HEARTBEATS</span>
+            <button className="poll-btn" onClick={() => { loadStatus(); loadHistory(); toast("Refreshed"); }}>
+              ↻ Refresh
+            </button>
+          </div>
+          {history.length === 0
+            ? <div className="empty">NO HISTORY YET</div>
+            : history.map((h, i) => (
+                <div key={i} className="history-item">
+                  <div className={`h-dot ${h.status}`} />
+                  <div className="h-status">{h.status}</div>
+                  <div className="h-time">{fmtTime(h.timestamp)}</div>
+                </div>
+              ))
+          }
+        </div>
+      </div>
+
+      <div className={`toast ${show ? "show" : ""}`}>{msg}</div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
