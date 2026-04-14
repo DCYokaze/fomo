@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Header, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
@@ -370,7 +371,13 @@ def payer_create_job(body: JobCreate, _=Depends(require_payer)):
     return {"ok": True, "job_id": job_id}
 
 # ─── Static Clients — mount LAST ──────────────────────────────────────────────
-# /hunter/ → static/hunter/index.html
-# /payer/  → static/payer/index.html
+# /         → static/index.html  (landing / role picker)
+# /hunter/  → static/hunter/index.html
+# /payer/   → static/payer/index.html
+
+@app.get("/", include_in_schema=False)
+def landing():
+    return FileResponse("static/index.html")
+
 app.mount("/hunter", StaticFiles(directory="static/hunter", html=True), name="hunter")
 app.mount("/payer",  StaticFiles(directory="static/payer",  html=True), name="payer")

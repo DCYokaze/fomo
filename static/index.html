@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hunter × Payer — Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500&family=Syne:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    /* Hunter (dark) */
+    --h-bg:      #0d0d0d;
+    --h-s1:      #161616;
+    --h-border:  rgba(255,255,255,0.08);
+    --h-accent:  #f0ff40;
+    --h-green:   #00e87a;
+    --h-text:    #efefef;
+    --h-muted:   rgba(239,239,239,0.45);
+    --h-mono:    'IBM Plex Mono', monospace;
+    --h-sans:    'IBM Plex Sans', sans-serif;
+
+    /* Payer (light) */
+    --p-bg:      #f5f4f0;
+    --p-s1:      #ffffff;
+    --p-border:  rgba(0,0,0,0.08);
+    --p-green:   #00a35c;
+    --p-ink:     #1a1a1a;
+    --p-muted:   rgba(26,26,26,0.5);
+    --p-mono:    'DM Mono', monospace;
+    --p-sans:    'Syne', sans-serif;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Demo Banner ─────────────────────────────────────────── */
+  .demo-bar {
+    background: #f0ff40;
+    color: #0d0d0d;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 7px 1rem;
+    position: sticky; top: 0; z-index: 100;
+    font-weight: 600;
+  }
+  .demo-bar span {
+    opacity: 0.55;
+    font-weight: 400;
+    margin-left: 1.5rem;
+    letter-spacing: 0.1em;
+  }
+
+  /* ── Hero header ─────────────────────────────────────────── */
+  .hero {
+    background: #0d0d0d;
+    color: #efefef;
+    text-align: center;
+    padding: 3.5rem 2rem 2.8rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .hero-logo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    color: rgba(240,255,64,0.6);
+    text-transform: uppercase;
+    margin-bottom: 1.4rem;
+  }
+  .hero h1 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    color: #efefef;
+    margin-bottom: 1rem;
+  }
+  .hero h1 .x {
+    color: #f0ff40;
+    padding: 0 0.15em;
+  }
+  .hero p {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 15px;
+    color: rgba(239,239,239,0.5);
+    max-width: 440px;
+    margin: 0 auto;
+    line-height: 1.65;
+  }
+
+  /* ── Role picker ─────────────────────────────────────────── */
+  .picker {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* ── Hunter panel ────────────────────────────────────────── */
+  .panel {
+    display: flex;
+    flex-direction: column;
+    padding: 3rem 3.5rem;
+    gap: 1.5rem;
+    text-decoration: none;
+    transition: background 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .panel::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+  .panel:hover::after { opacity: 1; }
+
+  .panel-hunter {
+    background: var(--h-bg);
+    border-right: 1px solid rgba(255,255,255,0.06);
+  }
+  .panel-hunter::after {
+    background: radial-gradient(ellipse at 30% 50%, rgba(240,255,64,0.04) 0%, transparent 70%);
+  }
+  .panel-hunter:hover {
+    background: #111111;
+  }
+
+  .panel-payer {
+    background: var(--p-bg);
+  }
+  .panel-payer::after {
+    background: radial-gradient(ellipse at 70% 50%, rgba(0,163,92,0.05) 0%, transparent 70%);
+  }
+  .panel-payer:hover {
+    background: #efede8;
+  }
+
+  /* ── Panel internals ─────────────────────────────────────── */
+  .panel-role {
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 4px;
+    display: inline-block;
+    align-self: flex-start;
+  }
+  .panel-hunter .panel-role {
+    font-family: var(--h-mono);
+    background: rgba(240,255,64,0.1);
+    color: var(--h-accent);
+    border: 1px solid rgba(240,255,64,0.22);
+  }
+  .panel-payer .panel-role {
+    font-family: var(--p-mono);
+    background: rgba(0,0,0,0.06);
+    color: var(--p-muted);
+    border: 1px solid rgba(0,0,0,0.1);
+  }
+
+  .panel-title {
+    line-height: 1.2;
+  }
+  .panel-hunter .panel-title {
+    font-family: var(--h-mono);
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    font-weight: 600;
+    color: var(--h-text);
+  }
+  .panel-payer .panel-title {
+    font-family: var(--p-sans);
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    font-weight: 700;
+    color: var(--p-ink);
+  }
+
+  .panel-subtitle {
+    font-size: 13px;
+    line-height: 1.6;
+    max-width: 340px;
+  }
+  .panel-hunter .panel-subtitle {
+    font-family: var(--h-sans);
+    color: var(--h-muted);
+  }
+  .panel-payer .panel-subtitle {
+    font-family: var(--p-sans);
+    color: var(--p-muted);
+  }
+
+  .panel-features {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    margin-top: 0.25rem;
+  }
+  .feature {
+    display: flex;
+    align-items: baseline;
+    gap: 0.65rem;
+    font-size: 12px;
+  }
+  .feature-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    position: relative;
+    top: -1px;
+  }
+  .panel-hunter .feature { font-family: var(--h-mono); color: var(--h-muted); }
+  .panel-hunter .feature-dot { background: var(--h-accent); }
+  .panel-payer .feature { font-family: var(--p-mono); color: var(--p-muted); }
+  .panel-payer .feature-dot { background: var(--p-green); }
+
+  .panel-cta {
+    margin-top: auto;
+    padding-top: 2.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: gap 0.2s;
+  }
+  .panel:hover .panel-cta { gap: 1.1rem; }
+
+  .panel-hunter .panel-cta {
+    font-family: var(--h-mono);
+    color: var(--h-accent);
+  }
+  .panel-payer .panel-cta {
+    font-family: var(--p-mono);
+    color: var(--p-ink);
+  }
+  .cta-arrow {
+    font-size: 16px;
+    transition: transform 0.2s;
+  }
+  .panel:hover .cta-arrow { transform: translateX(4px); }
+
+  /* ── Divider line ────────────────────────────────────────── */
+  .panel-divider {
+    width: 1px;
+    background: linear-gradient(to bottom, transparent, rgba(128,128,128,0.2) 20%, rgba(128,128,128,0.2) 80%, transparent);
+    position: absolute;
+    left: 50%;
+    top: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* ── Footer ──────────────────────────────────────────────── */
+  .footer {
+    background: #0d0d0d;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: rgba(239,239,239,0.2);
+    text-transform: uppercase;
+  }
+  .footer-sep { opacity: 0.3; }
+
+  /* ── Responsive ──────────────────────────────────────────── */
+  @media (max-width: 680px) {
+    .picker {
+      grid-template-columns: 1fr;
+    }
+    .panel {
+      padding: 2.5rem 1.75rem;
+      min-height: 420px;
+    }
+    .panel-hunter {
+      border-right: none;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .panel-divider { display: none; }
+    .hero { padding: 2.5rem 1.5rem 2rem; }
+  }
+
+  /* ── Hover accent line ───────────────────────────────────── */
+  .panel-hunter::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--h-accent), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .panel-payer::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--p-green), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .panel:hover::before { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- Demo Banner -->
+<div class="demo-bar">
+  Demo Environment
+  <span>Gamer-for-hire platform · Select a role to explore</span>
+</div>
+
+<!-- Hero -->
+<header class="hero">
+  <div class="hero-logo">Hunter × Payer</div>
+  <h1>Gamer<span class="x">×</span>Hire Platform</h1>
+  <p>Real-time job coordination between hired gamers and the clients who need them. Pick a role below to walk through the dashboard.</p>
+</header>
+
+<!-- Role Picker -->
+<div class="picker" style="position:relative;">
+  <div class="panel-divider"></div>
+
+  <!-- Hunter -->
+  <a class="panel panel-hunter" href="/hunter/">
+    <div class="panel-role">Hunter</div>
+    <div class="panel-title">The Gamer</div>
+    <p class="panel-subtitle">
+      Takes job requests, monitors assigned accounts in real time, and marks progress as work is completed.
+    </p>
+    <div class="panel-features">
+      <div class="feature"><span class="feature-dot"></span>Browse & accept open jobs</div>
+      <div class="feature"><span class="feature-dot"></span>Track account online/offline status</div>
+      <div class="feature"><span class="feature-dot"></span>Update job progress + working flag</div>
+      <div class="feature"><span class="feature-dot"></span>View personal job history</div>
+    </div>
+    <div class="panel-cta">
+      Enter Hunter Dashboard <span class="cta-arrow">→</span>
+    </div>
+  </a>
+
+  <!-- Payer -->
+  <a class="panel panel-payer" href="/payer/">
+    <div class="panel-role">Payer</div>
+    <div class="panel-title">The Client</div>
+    <p class="panel-subtitle">
+      Posts jobs for their game accounts, monitors heartbeat status, and reviews the history of completed work.
+    </p>
+    <div class="panel-features">
+      <div class="feature"><span class="feature-dot"></span>Create & manage job requests</div>
+      <div class="feature"><span class="feature-dot"></span>Live account heartbeat monitor</div>
+      <div class="feature"><span class="feature-dot"></span>View job status per account</div>
+      <div class="feature"><span class="feature-dot"></span>Browse supported games</div>
+    </div>
+    <div class="panel-cta">
+      Enter Payer Dashboard <span class="cta-arrow">→</span>
+    </div>
+  </a>
+</div>
+
+<!-- Footer -->
+<footer class="footer">
+  <span>Hunter × Payer</span>
+  <span class="footer-sep">·</span>
+  <span>Demo · No real accounts</span>
+  <span class="footer-sep">·</span>
+  <span>API at /docs</span>
+</footer>
+
+</body>
+</html>
