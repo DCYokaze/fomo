@@ -9,6 +9,7 @@ from typing import Optional
 import os
 import psycopg2
 import psycopg2.extras
+import psycopg2.pool
 
 app = FastAPI(title="Game Monitor API")
 
@@ -22,16 +23,15 @@ app.add_middleware(
 
 # ─── DB ───────────────────────────────────────────────────────────────────────
 
-def get_conn():
-    return psycopg2.connect(os.environ["DATABASE_URL"])
+_pool: psycopg2.pool.ThreadedConnectionPool | None = None
 
 @contextmanager
 def get_db():
-    conn = get_conn()
+    conn = _pool.getconn()
     try:
         yield conn
     finally:
-        conn.close()
+        _pool.putconn(conn)
 
 # ─── Auth ─────────────────────────────────────────────────────────────────────
 
@@ -58,6 +58,8 @@ def require_tray(x_api_key: str = Header(...)):
 
 @app.on_event("startup")
 def init_db():
+    global _pool
+    _pool = psycopg2.pool.ThreadedConnectionPool(2, 10, os.environ["DATABASE_URL"])
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
