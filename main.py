@@ -30,6 +30,9 @@ def get_db():
     conn = _pool.getconn()
     try:
         yield conn
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         _pool.putconn(conn)
 
