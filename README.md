@@ -9,8 +9,10 @@ Gamer-for-hire platform. Real-time account monitoring for hirers.
     ├── requirements.txt
     ├── Dockerfile
     ├── docker-compose.yml
+    ├── cloudbuild.yaml      GCP Cloud Build config
     ├── .env.example         Safe to push — no real values
     ├── static/
+    │   ├── index.html       Landing / role picker
     │   ├── hunter/          Hunter dashboard
     │   │   └── index.html
     │   └── payer/           Payer dashboard
@@ -63,6 +65,14 @@ No Cloud SQL needed. Cost: $0/month on free tier.
 - `GET  /payer/games` — list available games
 
 ## Run locally
+
+**Option 1 — Docker Compose (includes local Postgres):**
+
+    docker compose up
+    # Hunter: http://localhost:8080/hunter/
+    # Payer:  http://localhost:8080/payer/
+
+**Option 2 — Bare Python (needs external DATABASE_URL):**
 
     cp .env.example .env
     # Fill in DATABASE_URL from neon.tech
