@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from datetime import date
 
 from fastapi import FastAPI, Header, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
@@ -41,6 +42,7 @@ def get_db():
 HUNTER_KEYS = set(os.environ.get("HUNTER_API_KEYS", "hunter-key-1").split(","))
 PAYER_KEYS  = set(os.environ.get("PAYER_API_KEYS",  "payer-key-1").split(","))
 TRAY_KEYS   = set(os.environ.get("TRAY_API_KEYS",   "tray-key-1").split(","))
+ADMIN_KEYS  = set(os.environ.get("ADMIN_API_KEYS",  "admin-key-1").split(","))
 
 def require_hunter(x_api_key: str = Header(...)):
     if x_api_key not in HUNTER_KEYS:
@@ -55,6 +57,11 @@ def require_payer(x_api_key: str = Header(...)):
 def require_tray(x_api_key: str = Header(...)):
     if x_api_key not in TRAY_KEYS:
         raise HTTPException(status_code=401, detail="Tray app key required")
+    return x_api_key
+
+def require_admin(x_api_key: str = Header(...)):
+    if x_api_key not in ADMIN_KEYS:
+        raise HTTPException(status_code=401, detail="Admin key required")
     return x_api_key
 
 # ─── DB Init ──────────────────────────────────────────────────────────────────
@@ -118,6 +125,25 @@ def init_db():
                 [("Genshin Impact",), ("Star Rail",), ("Honkai Impact 3rd",)]
             )
 
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS game_events (
+                    id          SERIAL PRIMARY KEY,
+                    game        TEXT NOT NULL,
+                    name        TEXT NOT NULL,
+                    type        TEXT NOT NULL,
+                    cur         TEXT,
+                    cur_val     TEXT,
+                    thb         INTEGER DEFAULT 0,
+                    hire_cost   INTEGER DEFAULT 0,
+                    timing      TEXT DEFAULT 'now' CHECK (timing IN ('now', 'soon')),
+                    end_date    DATE,
+                    start_date  DATE,
+                    status      TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
+                    created_at  TIMESTAMPTZ DEFAULT now(),
+                    updated_at  TIMESTAMPTZ DEFAULT now()
+                )
+            """)
+
             # Seed demo account
             cur.execute("""
                 INSERT INTO accounts (id, payer_name, game)
@@ -145,6 +171,49 @@ class JobAccept(BaseModel):
 
 class JobProgress(BaseModel):
     progress: str  # "queued" | "in_progress"
+
+class GameEventCreate(BaseModel):
+    game: str
+    name: str
+    type: str
+    cur: Optional[str] = None
+    cur_val: Optional[str] = None
+    thb: int = 0
+    hire_cost: int = 0
+    timing: str = "now"
+    end_date: Optional[date] = None
+    start_date: Optional[date] = None
+    status: str = "draft"
+
+class BulkEventImport(BaseModel):
+    events: list[GameEventCreate]
+
+# ─── Helpers ──────────────────────────────────────────────────────────────────
+
+def _fmt_event(row) -> dict:
+    today = date.today()
+    d = {
+        "id":       row["id"],
+        "game":     row["game"],
+        "name":     row["name"],
+        "type":     row["type"],
+        "cur":      row.get("cur"),
+        "curVal":   row.get("cur_val"),
+        "thb":      row.get("thb", 0),
+        "hireCost": row.get("hire_cost", 0),
+        "timing":   row.get("timing"),
+        "status":   row.get("status"),
+    }
+    if row.get("end_date"):
+        delta = (row["end_date"] - today).days
+        d["daysLeft"]   = delta
+        d["ending"]     = delta <= 5
+        d["endDate"]    = row["end_date"].strftime("%-d %b")
+        d["endDateIso"] = row["end_date"].isoformat()
+    if row.get("start_date"):
+        d["startDate"]    = row["start_date"].strftime("%-d %b")
+        d["startDateIso"] = row["start_date"].isoformat()
+    return d
 
 # ─── Tray App Endpoints ────────────────────────────────────────────────────────
 
@@ -352,6 +421,101 @@ def payer_create_job(body: JobCreate, _=Depends(require_payer)):
         conn.commit()
     return {"ok": True, "job_id": job_id}
 
+# ─── Events ───────────────────────────────────────────────────────────────────
+
+@app.get("/events")
+def list_events(_=Depends(require_payer)):
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, game, name, type, cur, cur_val, thb, hire_cost,
+                       timing, end_date, start_date
+                FROM game_events WHERE status = 'published'
+                ORDER BY timing DESC, end_date ASC NULLS LAST, start_date ASC NULLS LAST
+            """)
+            rows = cur.fetchall()
+    now_list, soon_list = [], []
+    for row in rows:
+        ev = _fmt_event(row)
+        (now_list if row["timing"] == "now" else soon_list).append(ev)
+    return {"now": now_list, "soon": soon_list}
+
+# ─── Admin Endpoints ──────────────────────────────────────────────────────────
+
+@app.get("/admin/events")
+def admin_list_events(_=Depends(require_admin)):
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, game, name, type, cur, cur_val, thb, hire_cost,
+                       timing, end_date, start_date, status, created_at
+                FROM game_events ORDER BY created_at DESC
+            """)
+            rows = cur.fetchall()
+    return {"events": [_fmt_event(row) for row in rows]}
+
+@app.post("/admin/events", status_code=201)
+def admin_create_event(body: GameEventCreate, _=Depends(require_admin)):
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO game_events
+                    (game, name, type, cur, cur_val, thb, hire_cost,
+                     timing, end_date, start_date, status)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
+            """, (body.game, body.name, body.type, body.cur, body.cur_val,
+                  body.thb, body.hire_cost, body.timing,
+                  body.end_date, body.start_date, body.status))
+            new_id = cur.fetchone()[0]
+        conn.commit()
+    return {"ok": True, "id": new_id}
+
+@app.post("/admin/events/import")
+def admin_import_events(body: BulkEventImport, _=Depends(require_admin)):
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            for ev in body.events:
+                cur.execute("""
+                    INSERT INTO game_events
+                        (game, name, type, cur, cur_val, thb, hire_cost,
+                         timing, end_date, start_date, status)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'draft')
+                """, (ev.game, ev.name, ev.type, ev.cur, ev.cur_val,
+                      ev.thb, ev.hire_cost, ev.timing,
+                      ev.end_date, ev.start_date))
+        conn.commit()
+    return {"ok": True, "imported": len(body.events)}
+
+@app.put("/admin/events/{event_id}")
+def admin_update_event(event_id: int, body: GameEventCreate, _=Depends(require_admin)):
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                UPDATE game_events SET
+                    game=%s, name=%s, type=%s, cur=%s, cur_val=%s,
+                    thb=%s, hire_cost=%s, timing=%s, end_date=%s,
+                    start_date=%s, status=%s, updated_at=now()
+                WHERE id=%s RETURNING id
+            """, (body.game, body.name, body.type, body.cur, body.cur_val,
+                  body.thb, body.hire_cost, body.timing,
+                  body.end_date, body.start_date, body.status, event_id))
+            row = cur.fetchone()
+        conn.commit()
+    if not row:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return {"ok": True}
+
+@app.delete("/admin/events/{event_id}")
+def admin_delete_event(event_id: int, _=Depends(require_admin)):
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM game_events WHERE id=%s RETURNING id", (event_id,))
+            row = cur.fetchone()
+        conn.commit()
+    if not row:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return {"ok": True}
+
 # ─── Static Clients — mount LAST ──────────────────────────────────────────────
 # /         → static/index.html  (landing / role picker)
 # /hunter/  → static/hunter/index.html
@@ -361,5 +525,7 @@ def payer_create_job(body: JobCreate, _=Depends(require_payer)):
 def landing():
     return FileResponse("static/index.html")
 
+app.mount("/lib",    StaticFiles(directory="static/lib"),           name="lib")
 app.mount("/hunter", StaticFiles(directory="static/hunter", html=True), name="hunter")
 app.mount("/payer",  StaticFiles(directory="static/payer",  html=True), name="payer")
+app.mount("/admin",  StaticFiles(directory="static/admin",  html=True), name="admin")

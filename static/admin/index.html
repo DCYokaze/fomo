@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Event Admin — Game Monitor</title>
+<script src="/lib/react.development.js"></script>
+<script src="/lib/react-dom.development.js"></script>
+<script src="/lib/babel.min.js"></script>
+<script>Babel.registerPreset("react-classic",{presets:[[Babel.availablePresets["react"],{runtime:"classic"}]]});</script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --s1: #ffffff;
+    --s2: #eeecea;
+    --s3: #e4e2de;
+    --border: rgba(0,0,0,0.08);
+    --border2: rgba(0,0,0,0.14);
+    --green: #00a35c;
+    --green-bg: #e6f7ef;
+    --red: #d93025;
+    --red-bg: #fdecea;
+    --amber: #b06000;
+    --amber-bg: #fff4e0;
+    --blue: #185FA5;
+    --blue-bg: #dbeafe;
+    --ink: #1a1a1a;
+    --muted: rgba(26,26,26,0.5);
+    --dim: rgba(26,26,26,0.3);
+    --mono: 'DM Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); min-height: 100vh; }
+
+  header {
+    background: var(--s1); border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo { font-family: var(--mono); font-size: 13px; letter-spacing: 0.12em; }
+  .role-badge {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+    padding: 4px 10px; border-radius: 4px;
+    background: #1a1a1a; color: white;
+  }
+
+  .layout { max-width: 1100px; margin: 0 auto; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
+
+  /* STATS BAR */
+  .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: var(--border); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+  .stat { background: var(--s1); padding: 1.25rem 1.5rem; }
+  .stat-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; color: var(--dim); text-transform: uppercase; margin-bottom: 8px; }
+  .stat-value { font-family: var(--mono); font-size: 22px; font-weight: 500; }
+  .stat-value.green { color: var(--green); }
+  .stat-value.amber { color: var(--amber); }
+
+  /* PANEL */
+  .panel { background: var(--s1); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .panel-head { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  .panel-title { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; color: var(--muted); text-transform: uppercase; }
+
+  /* FORM */
+  .form-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; color: var(--dim); text-transform: uppercase; }
+  .field-input, .field-select {
+    background: var(--s2); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 9px 12px; color: var(--ink);
+    font-family: var(--sans); font-size: 14px; outline: none; transition: border-color 0.15s;
+    width: 100%;
+  }
+  .field-input:focus, .field-select:focus { border-color: var(--ink); }
+  .field-select { cursor: pointer; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%231a1a1a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+  }
+  .radio-row { display: flex; gap: 1rem; align-items: center; }
+  .radio-label { display: flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; }
+  .radio-label input { cursor: pointer; }
+  .form-actions { display: flex; gap: 10px; padding-top: 4px; }
+
+  /* BUTTONS */
+  .btn { padding: 9px 20px; border-radius: 8px; border: none; font-family: var(--sans); font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: var(--ink); color: white; }
+  .btn-primary:hover:not(:disabled) { opacity: 0.8; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border2); }
+  .btn-ghost:hover:not(:disabled) { background: var(--s2); color: var(--ink); }
+  .btn-danger { background: var(--red-bg); color: var(--red); border: 1px solid rgba(217,48,37,0.3); }
+  .btn-danger:hover:not(:disabled) { opacity: 0.8; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 6px; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { border-bottom: 2px solid var(--border2); }
+  th { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; color: var(--dim); text-transform: uppercase; padding: 10px 16px; text-align: left; white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--s2); }
+  td { padding: 12px 16px; font-size: 13px; vertical-align: middle; }
+  .td-mono { font-family: var(--mono); font-size: 12px; }
+
+  /* BADGES */
+  .gbadge {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.06em; font-weight: 500;
+    padding: 2px 7px; border-radius: 4px; display: inline-block; white-space: nowrap;
+  }
+  .gbadge.gi  { background: #dbeafe; color: #1e40af; }
+  .gbadge.hsr { background: #ede9fe; color: #5b21b6; }
+  .gbadge.hi3 { background: #fee2e2; color: #991b1b; }
+  .gbadge.bdo { background: #dcfce7; color: #166534; }
+
+  .status-badge {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em;
+    padding: 3px 9px; border-radius: 20px; white-space: nowrap;
+  }
+  .badge-published { background: var(--green-bg); color: var(--green); }
+  .badge-draft { background: var(--s3); color: var(--muted); }
+  .badge-now { background: var(--amber-bg); color: var(--amber); }
+  .badge-soon { background: var(--blue-bg); color: var(--blue); }
+
+  .td-actions { display: flex; gap: 6px; align-items: center; }
+
+  /* IMPORT */
+  .import-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+  .field-textarea {
+    background: var(--s2); border: 1px solid var(--border2); border-radius: 8px;
+    padding: 12px; color: var(--ink); font-family: var(--mono); font-size: 12px;
+    outline: none; resize: vertical; min-height: 180px; line-height: 1.6;
+    transition: border-color 0.15s; width: 100%;
+  }
+  .field-textarea:focus { border-color: var(--ink); }
+  .import-hint { font-family: var(--mono); font-size: 10px; color: var(--dim); line-height: 1.7; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(16px);
+    background: var(--ink); border-radius: 8px; padding: 10px 20px;
+    font-family: var(--mono); font-size: 12px; color: white;
+    opacity: 0; transition: all 0.3s; z-index: 999; white-space: nowrap; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .empty { text-align: center; padding: 3rem; font-family: var(--mono); font-size: 11px; color: var(--dim); letter-spacing: 0.1em; }
+
+  @media (max-width: 700px) {
+    .layout { padding: 1rem; }
+    .form-row, .form-row-3 { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react-classic">
+const { useState, useEffect, useRef } = React;
+
+const API_BASE  = "";
+const ADMIN_KEY = "admin-key-1";
+
+const GAME_LABELS = { gi: 'Genshin Impact', hsr: 'Star Rail', hi3: 'Honkai Impact 3rd', bdo: 'Black Desert' };
+const GAMES = ['gi', 'hsr', 'hi3', 'bdo'];
+
+const EMPTY_FORM = {
+  game: 'gi', name: '', type: '', timing: 'now',
+  cur: '', cur_val: '', thb: 0, hire_cost: 0,
+  end_date: '', start_date: '', status: 'draft',
+};
+
+const api = (path, opts = {}) =>
+  fetch(`${API_BASE}${path}`, {
+    ...opts,
+    headers: { 'x-api-key': ADMIN_KEY, 'Content-Type': 'application/json', ...opts.headers },
+  }).then(r => {
+    if (!r.ok) return r.json().then(e => Promise.reject(e));
+    return r.json();
+  });
+
+function useToast() {
+  const [msg, setMsg] = useState('');
+  const [show, setShow] = useState(false);
+  const t = useRef();
+  const toast = (m) => {
+    setMsg(m); setShow(true);
+    clearTimeout(t.current);
+    t.current = setTimeout(() => setShow(false), 2500);
+  };
+  return { msg, show, toast };
+}
+
+// ─── Event Form ───────────────────────────────────────────────────────────────
+function EventForm({ initial, onSave, onCancel, saving }) {
+  const [form, setForm] = useState(initial || { ...EMPTY_FORM });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  return (
+    <div className="form-body">
+      <div className="form-row">
+        <div className="field">
+          <label className="field-label">Game *</label>
+          <select className="field-select" value={form.game} onChange={e => set('game', e.target.value)}>
+            {GAMES.map(g => <option key={g} value={g}>{GAME_LABELS[g]}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label className="field-label">Event Type *</label>
+          <input className="field-input" value={form.type} onChange={e => set('type', e.target.value)}
+            placeholder="e.g. Weekly bonus, Limited event" />
+        </div>
+      </div>
+
+      <div className="field">
+        <label className="field-label">Event Name *</label>
+        <input className="field-input" value={form.name} onChange={e => set('name', e.target.value)}
+          placeholder="e.g. Windblume Festival rerun" />
+      </div>
+
+      <div className="form-row">
+        <div className="field">
+          <label className="field-label">Timing</label>
+          <div className="radio-row" style={{paddingTop:'6px'}}>
+            <label className="radio-label">
+              <input type="radio" checked={form.timing==='now'} onChange={()=>set('timing','now')} />
+              Active now
+            </label>
+            <label className="radio-label">
+              <input type="radio" checked={form.timing==='soon'} onChange={()=>set('timing','soon')} />
+              Coming soon
+            </label>
+          </div>
+        </div>
+        <div className="field">
+          <label className="field-label">Status</label>
+          <div className="radio-row" style={{paddingTop:'6px'}}>
+            <label className="radio-label">
+              <input type="radio" checked={form.status==='draft'} onChange={()=>set('status','draft')} />
+              Draft
+            </label>
+            <label className="radio-label">
+              <input type="radio" checked={form.status==='published'} onChange={()=>set('status','published')} />
+              Published
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div className="form-row-3">
+        <div className="field">
+          <label className="field-label">Currency Name</label>
+          <input className="field-input" value={form.cur} onChange={e => set('cur', e.target.value)}
+            placeholder="e.g. Primogems" />
+        </div>
+        <div className="field">
+          <label className="field-label">Currency Amount</label>
+          <input className="field-input" value={form.cur_val} onChange={e => set('cur_val', e.target.value)}
+            placeholder="e.g. 420 or ×4" />
+        </div>
+        <div className="field">
+          <label className="field-label">THB Value (฿)</label>
+          <input className="field-input" type="number" value={form.thb} onChange={e => set('thb', e.target.value)} />
+        </div>
+      </div>
+
+      <div className="form-row">
+        <div className="field">
+          <label className="field-label">Hire Cost (฿)</label>
+          <input className="field-input" type="number" value={form.hire_cost} onChange={e => set('hire_cost', e.target.value)} />
+        </div>
+        {form.timing === 'now' ? (
+          <div className="field">
+            <label className="field-label">End Date</label>
+            <input className="field-input" type="date" value={form.end_date} onChange={e => set('end_date', e.target.value)} />
+          </div>
+        ) : (
+          <div className="field">
+            <label className="field-label">Start Date</label>
+            <input className="field-input" type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)} />
+          </div>
+        )}
+      </div>
+
+      <div className="form-actions">
+        <button className="btn btn-primary" disabled={saving || !form.name.trim()} onClick={() => onSave(form)}>
+          {saving ? 'Saving...' : 'Save Event'}
+        </button>
+        <button className="btn btn-ghost" onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── App ──────────────────────────────────────────────────────────────────────
+function App() {
+  const [events, setEvents] = useState([]);
+  const [formMode, setFormMode] = useState(null); // null | 'create' | {event}
+  const [saving, setSaving] = useState(false);
+  const [importJson, setImportJson] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const { msg, show, toast } = useToast();
+
+  const load = () =>
+    api('/admin/events')
+      .then(d => setEvents(d.events))
+      .catch(() => toast('Failed to load events'));
+
+  useEffect(() => { load(); }, []);
+
+  const handleSave = async (form) => {
+    setSaving(true);
+    try {
+      const body = JSON.stringify({
+        ...form,
+        thb: Number(form.thb),
+        hire_cost: Number(form.hire_cost),
+        end_date: form.end_date || null,
+        start_date: form.start_date || null,
+      });
+      if (formMode && formMode.id) {
+        await api(`/admin/events/${formMode.id}`, { method: 'PUT', body });
+        toast('Event updated');
+      } else {
+        await api('/admin/events', { method: 'POST', body });
+        toast('Event created');
+      }
+      setFormMode(null);
+      load();
+    } catch (e) {
+      toast('Save failed — check fields');
+    }
+    setSaving(false);
+  };
+
+  const handleDelete = async (ev) => {
+    if (!confirm(`Delete "${ev.name}"?`)) return;
+    try {
+      await api(`/admin/events/${ev.id}`, { method: 'DELETE' });
+      toast('Deleted');
+      load();
+    } catch { toast('Delete failed'); }
+  };
+
+  const handleToggleStatus = async (ev) => {
+    const newStatus = ev.status === 'published' ? 'draft' : 'published';
+    try {
+      await api(`/admin/events/${ev.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          game: ev.game, name: ev.name, type: ev.type, timing: ev.timing,
+          cur: ev.cur, cur_val: ev.curVal, thb: ev.thb, hire_cost: ev.hireCost,
+          end_date: ev.endDateIso || null, start_date: ev.startDateIso || null,
+          status: newStatus,
+        }),
+      });
+      toast(newStatus === 'published' ? 'Published' : 'Moved to draft');
+      load();
+    } catch { toast('Status change failed'); }
+  };
+
+  const openEdit = (ev) => {
+    setFormMode({
+      id: ev.id,
+      game: ev.game, name: ev.name, type: ev.type, timing: ev.timing,
+      cur: ev.cur || '', cur_val: ev.curVal || '',
+      thb: ev.thb || 0, hire_cost: ev.hireCost || 0,
+      end_date: ev.endDateIso || '', start_date: ev.startDateIso || '',
+      status: ev.status,
+    });
+  };
+
+  const handleImport = async () => {
+    setImporting(true);
+    try {
+      const parsed = JSON.parse(importJson);
+      const list = Array.isArray(parsed) ? parsed : parsed.events;
+      await api('/admin/events/import', { method: 'POST', body: JSON.stringify({ events: list }) });
+      toast(`Imported ${list.length} event(s) as drafts`);
+      setImportJson('');
+      setShowImport(false);
+      load();
+    } catch (e) {
+      toast('Import failed — invalid JSON or wrong format');
+    }
+    setImporting(false);
+  };
+
+  const published = events.filter(e => e.status === 'published').length;
+  const drafts    = events.filter(e => e.status === 'draft').length;
+
+  return (
+    <>
+      <header>
+        <div className="logo">GAME·MONITOR</div>
+        <div className="role-badge">ADMIN</div>
+      </header>
+
+      <div className="layout">
+
+        {/* STATS */}
+        <div className="stats">
+          <div className="stat">
+            <div className="stat-label">Total Events</div>
+            <div className="stat-value">{events.length}</div>
+          </div>
+          <div className="stat">
+            <div className="stat-label">Published</div>
+            <div className="stat-value green">{published}</div>
+          </div>
+          <div className="stat">
+            <div className="stat-label">Drafts</div>
+            <div className="stat-value amber">{drafts}</div>
+          </div>
+        </div>
+
+        {/* CREATE / EDIT FORM */}
+        <div className="panel">
+          <div className="panel-head">
+            <span className="panel-title">
+              {formMode ? (formMode.id ? 'Edit Event' : 'New Event') : 'Events'}
+            </span>
+            <div style={{display:'flex',gap:'8px'}}>
+              {!formMode && (
+                <>
+                  <button className="btn btn-ghost btn-sm" onClick={() => setShowImport(v => !v)}>
+                    {showImport ? 'Hide Import' : 'Import JSON'}
+                  </button>
+                  <button className="btn btn-primary btn-sm" onClick={() => setFormMode('create')}>
+                    + New Event
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {formMode && (
+            <EventForm
+              initial={formMode === 'create' ? null : formMode}
+              onSave={handleSave}
+              onCancel={() => setFormMode(null)}
+              saving={saving}
+            />
+          )}
+        </div>
+
+        {/* JSON IMPORT */}
+        {showImport && !formMode && (
+          <div className="panel">
+            <div className="panel-head">
+              <span className="panel-title">Import JSON</span>
+            </div>
+            <div className="import-body">
+              <div className="import-hint">
+                Paste a JSON array of events. All imported events are saved as <strong>drafts</strong>.<br />
+                Required fields: <code>game</code> (gi/hsr/hi3/bdo), <code>name</code>, <code>type</code>, <code>timing</code> (now/soon).<br />
+                Optional: <code>cur</code>, <code>cur_val</code>, <code>thb</code>, <code>hire_cost</code>, <code>end_date</code> (YYYY-MM-DD), <code>start_date</code>.
+              </div>
+              <textarea
+                className="field-textarea"
+                value={importJson}
+                onChange={e => setImportJson(e.target.value)}
+                placeholder={'[\n  {\n    "game": "gi",\n    "name": "Windblume Festival",\n    "type": "Limited event",\n    "timing": "now",\n    "cur": "Primogems",\n    "cur_val": "420",\n    "thb": 357,\n    "hire_cost": 89,\n    "end_date": "2026-07-01"\n  }\n]'}
+              />
+              <div style={{display:'flex',gap:'10px'}}>
+                <button className="btn btn-primary" disabled={importing || !importJson.trim()} onClick={handleImport}>
+                  {importing ? 'Importing...' : 'Import as Drafts'}
+                </button>
+                <button className="btn btn-ghost" onClick={() => { setShowImport(false); setImportJson(''); }}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* EVENTS TABLE */}
+        <div className="panel">
+          <div className="panel-head">
+            <span className="panel-title">All Events ({events.length})</span>
+          </div>
+          {events.length === 0 ? (
+            <div className="empty">NO EVENTS YET — CREATE ONE OR IMPORT JSON</div>
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Game</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Timing</th>
+                    <th>Date</th>
+                    <th>THB / Hire</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {events.map(ev => (
+                    <tr key={ev.id}>
+                      <td className="td-mono" style={{color:'var(--dim)'}}>{ev.id}</td>
+                      <td><span className={`gbadge ${ev.game}`}>{GAME_LABELS[ev.game] || ev.game}</span></td>
+                      <td style={{maxWidth:'220px'}}>
+                        <div style={{fontWeight:500}}>{ev.name}</div>
+                      </td>
+                      <td className="td-mono" style={{color:'var(--muted)'}}>{ev.type}</td>
+                      <td>
+                        <span className={`status-badge ${ev.timing === 'now' ? 'badge-now' : 'badge-soon'}`}>
+                          {ev.timing === 'now' ? 'Active' : 'Soon'}
+                        </span>
+                      </td>
+                      <td className="td-mono" style={{color:'var(--muted)', fontSize:'11px'}}>
+                        {ev.timing === 'now'
+                          ? ev.endDate
+                            ? <>ends {ev.endDate}{typeof ev.daysLeft === 'number' && <span style={{color: ev.ending ? 'var(--red)' : 'inherit'}}> · {ev.daysLeft}d</span>}</>
+                            : '—'
+                          : ev.startDate ? `starts ${ev.startDate}` : '—'
+                        }
+                      </td>
+                      <td className="td-mono" style={{fontSize:'11px'}}>
+                        {ev.thb ? `฿${ev.thb}` : '—'}
+                        {ev.hireCost ? <span style={{color:'var(--dim)'}}> / ฿{ev.hireCost}</span> : ''}
+                      </td>
+                      <td>
+                        <span className={`status-badge ${ev.status === 'published' ? 'badge-published' : 'badge-draft'}`}>
+                          {ev.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="td-actions">
+                          <button className="btn btn-ghost btn-sm" onClick={() => openEdit(ev)}>Edit</button>
+                          <button
+                            className={`btn btn-sm ${ev.status === 'published' ? 'btn-ghost' : 'btn-primary'}`}
+                            onClick={() => handleToggleStatus(ev)}
+                          >
+                            {ev.status === 'published' ? 'Unpublish' : 'Publish'}
+                          </button>
+                          <button className="btn btn-danger btn-sm" onClick={() => handleDelete(ev)}>Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+      </div>
+
+      <div className={`toast ${show ? 'show' : ''}`}>{msg}</div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

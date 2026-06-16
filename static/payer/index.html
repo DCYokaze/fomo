@@ -4,9 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Account Monitor — Payer</title>
-<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="/lib/react.development.js"></script>
+<script src="/lib/react-dom.development.js"></script>
+<script src="/lib/babel.min.js"></script>
+<script>Babel.registerPreset("react-classic",{presets:[[Babel.availablePresets["react"],{runtime:"classic"}]]});</script>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -221,18 +222,94 @@
 
   .spinner-sm { width: 14px; height: 14px; border: 2px solid var(--border2); border-top-color: var(--ink); border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
 
+  /* PAGE TABS */
+  .page-tabs {
+    display: flex; gap: 0; border-bottom: 1px solid var(--border);
+    background: var(--s1); padding: 0 2rem;
+    max-width: 900px; margin: 0 auto;
+  }
+  .page-tab {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em;
+    padding: 14px 20px; border: none; background: transparent;
+    color: var(--muted); cursor: pointer; transition: all 0.15s;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    text-transform: uppercase;
+  }
+  .page-tab:hover { color: var(--ink); }
+  .page-tab.active { color: var(--ink); border-bottom-color: var(--ink); }
+
+  /* EVENT TRACKER */
+  .et-section { margin-bottom: 2rem; }
+  .et-section-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .et-section-title { font-size: 15px; font-weight: 500; color: var(--ink); }
+  .et-count { font-family: var(--mono); font-size: 10px; color: var(--muted); background: var(--s2); padding: 2px 8px; border-radius: 10px; }
+  .et-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .et-dot.now { background: var(--green); }
+  .et-dot.soon { background: #378ADD; }
+  .et-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+  .et-card {
+    background: var(--s1); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px; transition: border-color 0.2s;
+  }
+  .et-card.ending { border-color: rgba(217,48,37,0.4); }
+  .et-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+  .et-card-left { flex: 1; min-width: 0; }
+  .et-gbadge {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; font-weight: 500;
+    padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 5px;
+  }
+  .et-gbadge.gi { background: #dbeafe; color: #1e40af; }
+  .et-gbadge.hsr { background: #ede9fe; color: #5b21b6; }
+  .et-gbadge.hi3 { background: #fee2e2; color: #991b1b; }
+  .et-gbadge.bdo { background: #dcfce7; color: #166534; }
+  .et-name { font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 2px; }
+  .et-type { font-family: var(--mono); font-size: 10px; color: var(--dim); }
+  .et-card-right { text-align: right; flex-shrink: 0; }
+  .et-cur-name { font-family: var(--mono); font-size: 9px; color: var(--dim); margin-bottom: 1px; }
+  .et-cur-val { font-family: var(--mono); font-size: 16px; font-weight: 500; color: var(--ink); }
+  .et-thb { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .et-card-bot {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    border-top: 1px solid var(--border); padding-top: 10px;
+  }
+  .et-date-label { font-family: var(--mono); font-size: 9px; color: var(--dim); text-transform: uppercase; margin-bottom: 2px; }
+  .et-date { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .et-date.ending { color: var(--red); }
+  .et-date.soon { color: #185FA5; }
+  .et-roi { font-family: var(--mono); font-size: 10px; padding: 2px 7px; border-radius: 4px; background: var(--green-bg); color: var(--green); display: inline-block; margin-top: 3px; }
+  .et-btn {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em;
+    padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border2);
+    background: transparent; color: var(--muted); cursor: pointer; transition: all 0.15s;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .et-btn:hover { background: var(--ink); color: white; border-color: var(--ink); }
+  .et-btn.hire { border-color: var(--ink); color: var(--ink); }
+  .et-btn.hire:hover { background: var(--ink); color: white; }
+  .et-filter-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .et-chip {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+    padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border2);
+    cursor: pointer; color: var(--muted); background: transparent; transition: all .15s;
+  }
+  .et-chip.active { background: var(--ink); color: white; border-color: var(--ink); }
+  .et-empty { font-family: var(--mono); font-size: 11px; color: var(--dim); padding: 2rem; text-align: center; background: var(--s2); border-radius: 10px; grid-column: 1/-1; letter-spacing: 0.08em; }
+
   @media (max-width: 600px) {
     .layout { padding: 1rem; }
     .hero { flex-wrap: wrap; }
     .hero-right { display: none; }
     .metrics { grid-template-columns: repeat(2, 1fr); }
+    .et-grid { grid-template-columns: 1fr; }
+    .page-tabs { padding: 0 1rem; }
+    .page-tab { padding: 12px 14px; font-size: 10px; }
   }
 </style>
 </head>
 <body>
 <div id="root"></div>
 
-<script type="text/babel">
+<script type="text/babel" data-presets="react-classic">
 const { useState, useEffect, useCallback, useRef } = React;
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -273,6 +350,113 @@ function useToast() {
   return { msg, show, toast };
 }
 
+// ─── Event Tracker ────────────────────────────────────────────────────────────
+const GAME_LABELS = {gi:'Genshin Impact',hsr:'Star Rail',hi3:'Honkai Impact 3rd',bdo:'Black Desert'};
+const ET_GAMES = ['all','gi','hsr','hi3','bdo'];
+
+function EventTracker({ onHire }) {
+  const [events, setEvents] = React.useState({ now: [], soon: [] });
+  const [evLoading, setEvLoading] = React.useState(true);
+  const [activeGame, setActiveGame] = React.useState('all');
+
+  React.useEffect(() => {
+    api('/events')
+      .then(data => { setEvents(data); setEvLoading(false); })
+      .catch(() => setEvLoading(false));
+  }, []);
+
+  if (evLoading) return <div className="empty">LOADING EVENTS...</div>;
+
+  const filter = e => activeGame === 'all' || e.game === activeGame;
+  const nowList = events.now.filter(filter).sort((a,b) => (a.daysLeft||99) - (b.daysLeft||99));
+  const soonList = events.soon.filter(filter);
+
+  return (
+    <div>
+      <div className="et-filter-row">
+        {ET_GAMES.map(g => (
+          <button key={g} className={`et-chip ${activeGame===g?'active':''}`} onClick={()=>setActiveGame(g)}>
+            {g==='all'?'All games':GAME_LABELS[g]}
+          </button>
+        ))}
+      </div>
+
+      <div className="et-section">
+        <div className="et-section-head">
+          <div className="et-dot now"/>
+          <span className="et-section-title">Active now</span>
+          <span className="et-count">{nowList.length} events</span>
+        </div>
+        <div className="et-grid">
+          {nowList.length === 0
+            ? <div className="et-empty">NO ACTIVE EVENTS</div>
+            : nowList.map(e => (
+              <div key={e.id} className={`et-card ${e.ending?'ending':''}`}>
+                <div className="et-card-top">
+                  <div className="et-card-left">
+                    <span className={`et-gbadge ${e.game}`}>{GAME_LABELS[e.game]}</span>
+                    <div className="et-name">{e.name}</div>
+                    <div className="et-type">{e.type}</div>
+                  </div>
+                  <div className="et-card-right">
+                    <div className="et-cur-name">{e.cur}</div>
+                    <div className="et-cur-val">{e.curVal}</div>
+                    <div className="et-thb">~฿{e.thb}</div>
+                  </div>
+                </div>
+                <div className="et-card-bot">
+                  <div>
+                    <div className="et-date-label">Ends</div>
+                    <div className={`et-date ${e.ending?'ending':''}`}>{e.endDate} · {e.daysLeft}d left</div>
+                    <div className="et-roi">Hire ฿{e.hireCost} → get ฿{e.thb}</div>
+                  </div>
+                  <button className="et-btn hire" onClick={()=>onHire(e)}>Hire now</button>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+
+      <div className="et-section">
+        <div className="et-section-head">
+          <div className="et-dot soon"/>
+          <span className="et-section-title">Coming soon</span>
+          <span className="et-count">{soonList.length} events</span>
+        </div>
+        <div className="et-grid">
+          {soonList.length === 0
+            ? <div className="et-empty">NO UPCOMING EVENTS</div>
+            : soonList.map(e => (
+              <div key={e.id} className="et-card">
+                <div className="et-card-top">
+                  <div className="et-card-left">
+                    <span className={`et-gbadge ${e.game}`}>{GAME_LABELS[e.game]}</span>
+                    <div className="et-name">{e.name}</div>
+                    <div className="et-type">{e.type}</div>
+                  </div>
+                  <div className="et-card-right">
+                    <div className="et-cur-name">{e.cur}</div>
+                    <div className="et-cur-val">{e.curVal}</div>
+                    <div className="et-thb">~฿{e.thb}</div>
+                  </div>
+                </div>
+                <div className="et-card-bot">
+                  <div>
+                    <div className="et-date-label">Starts</div>
+                    <div className="et-date soon">{e.startDate}</div>
+                  </div>
+                  <button className="et-btn">Remind me</button>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 function App() {
   const [statusData, setStatusData] = useState(null);
@@ -286,6 +470,7 @@ function App() {
   const [lastRefresh, setLastRefresh] = useState(null);
   const [games, setGames] = useState([]);
   const [selectedGame, setSelectedGame] = useState("");
+  const [activePage, setActivePage] = useState("monitor");
   const { msg, show, toast } = useToast();
   const pollRef = useRef();
 
@@ -358,6 +543,13 @@ function App() {
   const activeCount = history.filter(h => h.status === "active").length;
   const uptimePct = history.length ? Math.round((activeCount / history.length) * 100) : 0;
 
+  const handleHireFromEvent = (event) => {
+    setSelectedGame(event.game === 'gi' ? 'Genshin Impact' : event.game === 'hsr' ? 'Honkai: Star Rail' : event.game === 'hi3' ? 'Honkai Impact 3rd' : 'Black Desert Online');
+    setJobNote(`[Event] ${event.name} — please complete before ${event.endDate}`);
+    setActivePage("monitor");
+    toast("Event copied to job form ↓");
+  };
+
   return (
     <>
       <header>
@@ -365,7 +557,15 @@ function App() {
         <div className="role-badge">PAYER</div>
       </header>
 
+      <div className="page-tabs">
+        <button className={`page-tab ${activePage==='monitor'?'active':''}`} onClick={()=>setActivePage('monitor')}>Monitor</button>
+        <button className={`page-tab ${activePage==='events'?'active':''}`} onClick={()=>setActivePage('events')}>Event tracker</button>
+      </div>
+
       <div className="layout">
+        {activePage === 'events' ? (
+          <EventTracker onHire={handleHireFromEvent} />
+        ) : (<>
         {/* HERO */}
         <div className={`hero ${loading ? "loading" : s}`}>
           <div className={`hero-orb ${loading ? "loading" : s}`}>
@@ -519,6 +719,7 @@ function App() {
               ))
           }
         </div>
+        </>)}
       </div>
 
       <div className={`toast ${show ? "show" : ""}`}>{msg}</div>
